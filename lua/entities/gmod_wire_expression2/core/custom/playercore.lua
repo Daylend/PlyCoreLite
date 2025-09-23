@@ -119,6 +119,14 @@ e2function void entity:plySetJumpPower(number jumpPower)
 	this:SetJumpPower(math.Clamp(jumpPower, 0, 2^32/2-1))
 end
 
+--- Returns the mass of the player.
+e2function number entity:plyGetMass()
+	if not ValidPly(this) then return self:throw("Invalid player", nil) end
+	if not hasAccess(self.player, this, "getmass") then self:throw("You do not have access", nil) end
+
+	return this:GetPhysicsObject():GetMass()
+end
+
 --- Returns the jump power of the player.
 e2function number entity:plyGetJumpPower()
 	if not ValidPly(this) then return self:throw("Invalid player", nil) end
@@ -175,13 +183,12 @@ e2function void entity:plyResetSettings()
 	if not hasAccess(self.player, this, "resetsettings") then self:throw("You do not have access", nil) end
 
 	-- Only adjust HP and armor down, otherwise leave as is to prevent abuse
-	if this:GetHealth() > 100 then
+	if this:Health() > 100 then
 		this:SetHealth(100)
 	end
-	if this:GetArmor() > 100 then
+	if this:Armor() > 100 then
 		this:SetArmor(100)
 	end
-	
 	this:SetJumpPower(200)
 	this:SetGravity(1)
 	this:SetWalkSpeed(200)

@@ -1,4 +1,5 @@
 E2Helper.Descriptions["plySetJumpPower"] = "Sets the jump power, eg. the velocity the player will applied to when he jumps. default 200"
+E2Helper.Descriptions["plyGetMass"] = "Returns the mass of the player."
 E2Helper.Descriptions["plyGetJumpPower"] = "Returns the jump power of the player."
 E2Helper.Descriptions["plyGetGravity"] = "Returns the gravity of the player."
 E2Helper.Descriptions["plyGetSpeed"] = "Returns the walk speed of the player."
