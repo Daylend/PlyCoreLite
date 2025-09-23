@@ -63,7 +63,12 @@ e2function void entity:plyApplyForce(vector force)
 	if not hasAccess(self.player, this, "applyforce") then self:throw("You do not have access", nil) end
 
 	if check(force) then
-		this:SetVelocity(Vector(force[1],force[2],force[3]))
+		local clampedForce = Vector(
+			math.Clamp(force[1], -50000, 50000),
+			math.Clamp(force[2], -50000, 50000),
+			math.Clamp(force[3], -50000, 50000)
+		)
+		this:SetVelocity(clampedForce)
 	end
 end
 
