@@ -33,12 +33,17 @@ local function hasAccess(ply, target, command)
 					   targetPos.z >= minBounds.z and targetPos.z <= maxBounds.z then
 						return true -- Target within boundary
 					else
+						-- Add exception for resetting player settings in case they leave the event area
+						if command == "resetsettings" then
+							return true -- 
+						end
+
 						return false -- Target outside boundary
 					end
 				end
 			end
 			
-			return true -- Event team in event mode (non-exhib map or no target)
+			return true -- Event team in event mode (MBRP server but unsupported map)
 		end
 		
 		-- Fallback: Allow admins to use commands even if they're not event team/event mode
@@ -169,12 +174,19 @@ e2function void entity:plyResetSettings()
 	if not ValidPly(this) then return self:throw("Invalid player", nil) end
 	if not hasAccess(self.player, this, "resetsettings") then self:throw("You do not have access", nil) end
 
-	this:SetHealth(100)
+	-- Only adjust HP and armor down, otherwise leave as is to prevent abuse
+	if this:GetHealth() > 100 then
+		this:SetHealth(100)
+	end
+	if this:GetArmor() > 100 then
+		this:SetArmor(100)
+	end
+	
 	this:SetJumpPower(200)
 	this:SetGravity(1)
 	this:SetWalkSpeed(200)
 	this:SetRunSpeed(400)
-	this:SetArmor(0)
+	this:Freeze(false)
 end
 
 --- Returns the walk speed of the player.
