@@ -15,8 +15,38 @@ local function hasAccess(ply, target, command)
 		return valid
 	end
 
-	-- TODO: Add access control logic here
-		return true
+	-- SITUATION 1: Server has event mode and user group, MBRP specific
+	if ply.GetEventMode and ply.GetUserGroup then
+		-- Event Team members in event mode have access
+		if ply:GetUserGroup() == "Event Team" and ply:GetEventMode() then
+			-- If we're on the MBRP exhib map, restrict e2 commands to only be useable within the boundary box
+			local mapName = game.GetMap()
+			if string.find(mapName, "^rp_exhib_border") then
+				if IsValid(target) then
+					local targetPos = target:GetPos()
+					-- Grass area only
+					local minBounds = Vector(6000, 6000, 3000)
+					local maxBounds = Vector(-10000, -10000, 11000)
+					
+					if targetPos.x >= minBounds.x and targetPos.x <= maxBounds.x and
+					   targetPos.y >= minBounds.y and targetPos.y <= maxBounds.y and
+					   targetPos.z >= minBounds.z and targetPos.z <= maxBounds.z then
+						return true -- Target within boundary
+					else
+						return false -- Target outside boundary
+					end
+				end
+			end
+			
+			return true -- Event team in event mode (non-exhib map or no target)
+		end
+		
+		-- Fallback: Allow admins to use commands even if they're not event team/event mode
+		return ply:IsAdmin()
+	else
+		-- SITUATION 2: Not an MBRP server, allow admins to use commands
+		return ply:IsAdmin()
+	end
 end
 
 local function check(v)
