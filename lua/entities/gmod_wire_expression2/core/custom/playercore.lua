@@ -8,6 +8,25 @@ local function ValidPly(ply)
 	return true
 end
 
+local function isOnMBRPExhibMap()
+	local mapName = MAP and MAP or game.GetMap()
+	return string.find(mapName, "^rp_exhib_border")
+end
+
+local function isPositionInBounds(pos)
+	if not isOnMBRPExhibMap() then
+		return true -- No restrictions on other maps
+	end
+	
+	-- Grass area only
+	local minBounds = Vector(6000, 6000, 3000)
+	local maxBounds = Vector(-10000, -10000, 11000)
+	
+	return pos.x >= minBounds.x and pos.x <= maxBounds.x and
+	       pos.y >= minBounds.y and pos.y <= maxBounds.y and
+	       pos.z >= minBounds.z and pos.z <= maxBounds.z
+end
+
 local function hasAccess(ply, target, command)
 	local valid = hook.Call("PlyCoreCommand", GAMEMODE, ply, target, command)
 
@@ -20,26 +39,17 @@ local function hasAccess(ply, target, command)
 		-- Event Team members in event mode have access
 		if ply:GetUserGroup() == "Event Team" and ply:GetEventMode() then
 			-- If we're on the MBRP exhib map, restrict e2 commands to only be useable within the boundary box
-			local mapName = MAP and MAP or game.GetMap()
-			if string.find(mapName, "^rp_exhib_border") then
+			if isOnMBRPExhibMap() then
 				if IsValid(target) then
-					local targetPos = target:GetPos()
-					-- Grass area only
-					local minBounds = Vector(6000, 6000, 3000)
-					local maxBounds = Vector(-10000, -10000, 11000)
-					
-					if targetPos.x >= minBounds.x and targetPos.x <= maxBounds.x and
-					   targetPos.y >= minBounds.y and targetPos.y <= maxBounds.y and
-					   targetPos.z >= minBounds.z and targetPos.z <= maxBounds.z then
-						return true -- Target within boundary
-					else
-						-- Add exception for resetting player settings in case they leave the event area
-						if command == "resetsettings" then
-							return true -- 
-						end
-
-						return false -- Target outside boundary
+					-- Add exception for resetting player settings in case they leave the event area
+					if command == "resetsettings" then
+						return true
 					end
+
+					local targetPos = target:GetPos()
+					
+					-- Check if target is in event area
+					return isPositionInBounds(targetPos)
 				end
 			end
 			
@@ -82,7 +92,15 @@ e2function void entity:plySetPos(vector pos)
 	if not ValidPly(this) then return self:throw("Invalid player", nil) end
 	if not hasAccess(self.player, this, "setpos") then self:throw("You do not have access", nil) end
 
-	this:SetPos(Vector(math.Clamp(pos[1],-16000,16000), math.Clamp(pos[2],-16000,16000), math.Clamp(pos[3],-16000,16000)))
+	local targetPos = Vector(math.Clamp(pos[1],-16000,16000), math.Clamp(pos[2],-16000,16000), math.Clamp(pos[3],-16000,16000))
+	
+	-- Additional check: ensure target position is within bounds on MBRP exhib maps
+	if not isPositionInBounds(targetPos) then
+		self:throw("Target position is outside allowed boundary", nil)
+		return
+	end
+	
+	this:SetPos(targetPos)
 end
 
 --- Sets the angle of the player's camera.
