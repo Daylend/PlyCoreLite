@@ -1,16 +1,12 @@
 # PlayerCore - Minimal Edition
 
-A stripped-down version of PlayerCore, an extension for Expression 2 that provides basic player manipulation functions. Access control is implemented through a customizable system.
-
-## Workshop Installation
-
-The PlayerCore is available on the Steam Workshop! Go to the [PlayerCore Workshop Page][PlayerCore Workshop Page] and press `Subscribe`. For can go to the [Expression 2 Core Collection][Expression 2 Core Collection] for more extensions.
+A stripped-down version of PlayerCore, an extension for Expression 2 that provides basic player manipulation functions. Access control explained below.
 
 ## Manual Installation
 
 Clone this repository into your `steamapps\common\GarrysMod\garrysmod\addons` folder using this command if you are using git:
 
-    git clone https://github.com/sirpapate/playercore.git
+    git clone git@github.com:Daylend/PlyCoreLite.git
 
 ## Functions
 
@@ -44,7 +40,21 @@ Clone this repository into your `steamapps\common\GarrysMod\garrysmod\addons` fo
 
 ### Access Control
 
-All functions include access control through the `PlyCoreCommand` hook and a customizable `hasAccess` function. Server administrators can implement their own access control logic by modifying the `hasAccess` function in the code.
+All functions include access control through the `PlyCoreCommand` hook and a customizable `hasAccess` function currently designed for the MBRP event team to prevent abuse, but will also work for admins on normal servers.
+
+#### Abuse Prevention Logic Explained
+
+The addon includes access controls that adapt to different server types:
+
+**MBRP Servers (with Event Mode):**
+- Event Team members in event mode have full access
+- On `rp_exhib_border*` maps, commands are restricted to a specific boundary area (configurable coordinates)
+- Special exception: `plyResetSettings()` works outside boundaries to help players who leave the event without having their params reset
+- Non-event team members must be admins to use any functions
+
+**Standard Servers:**
+- Admin-only access for all functions
+- No special restrictions or boundaries
 
 [PlayerCore Workshop Page]: <https://steamcommunity.com/sharedfiles/filedetails/?id=216044582>
 [Expression 2 Core Collection]: <https://steamcommunity.com/workshop/filedetails/?id=726399057>
