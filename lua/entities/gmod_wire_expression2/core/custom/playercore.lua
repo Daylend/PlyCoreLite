@@ -20,7 +20,7 @@ local function hasAccess(ply, target, command)
 		-- Event Team members in event mode have access
 		if ply:GetUserGroup() == "Event Team" and ply:GetEventMode() then
 			-- If we're on the MBRP exhib map, restrict e2 commands to only be useable within the boundary box
-			local mapName = game.GetMap()
+			local mapName = MAP and MAP or game.GetMap()
 			if string.find(mapName, "^rp_exhib_border") then
 				if IsValid(target) then
 					local targetPos = target:GetPos()
