@@ -127,6 +127,7 @@ e2function void entity:plySetHealth(number health)
 	if not ValidPly(this) then return self:throw("Invalid player", nil) end
 	if not hasAccess(self.player, this, "sethealth") then self:throw("You do not have access", nil) end
 
+	markPlayerAsManipulated(this, self)
 	this:SetHealth(math.Clamp(health, 0, 2^32/2-1))
 end
 
@@ -135,6 +136,7 @@ e2function void entity:plySetArmor(number armor)
 	if not ValidPly(this) then return self:throw("Invalid player", nil) end
 	if not hasAccess(self.player, this, "setarmor") then self:throw("You do not have access", nil) end
 
+	markPlayerAsManipulated(this, self)
 	this:SetArmor(math.Clamp(armor, 0, 2^32/2-1))
 end
 
@@ -143,6 +145,7 @@ e2function void entity:plySetJumpPower(number jumpPower)
 	if not ValidPly(this) then return self:throw("Invalid player", nil) end
 	if not hasAccess(self.player, this, "setjumppower") then self:throw("You do not have access", nil) end
 
+	markPlayerAsManipulated(this, self)
 	this:SetJumpPower(math.Clamp(jumpPower, 0, 2^32/2-1))
 end
 
@@ -168,6 +171,7 @@ e2function void entity:plySetGravity(number gravity)
 	if not hasAccess(self.player, this, "setgravity") then self:throw("You do not have access", nil) end
 
 	if gravity == 0 then gravity = 1/10^10 end
+	markPlayerAsManipulated(this, self)
 	this:SetGravity(gravity/600)
 end
 
@@ -184,6 +188,7 @@ e2function void entity:plySetSpeed(number speed)
 	if not ValidPly(this) then return self:throw("Invalid player", nil) end
 	if not hasAccess(self.player, this, "setspeed") then self:throw("You do not have access", nil) end
 
+	markPlayerAsManipulated(this, self)
 	this:SetWalkSpeed(math.Clamp(speed, 1, 10000))
 	this:SetRunSpeed(math.Clamp(speed*2, 1, 10000))
 end
@@ -193,6 +198,7 @@ e2function void entity:plySetWalkSpeed(number speed)
 	if not ValidPly(this) then return self:throw("Invalid player", nil) end
 	if not hasAccess(self.player, this, "setwalkspeed") then self:throw("You do not have access", nil) end
 
+	markPlayerAsManipulated(this, self)
 	this:SetWalkSpeed(math.Clamp(speed, 1, 10000))
 end
 
@@ -201,6 +207,7 @@ e2function void entity:plySetRunSpeed(number speed)
 	if not ValidPly(this) then return self:throw("Invalid player", nil) end
 	if not hasAccess(self.player, this, "setrunspeed") then self:throw("You do not have access", nil) end
 
+	markPlayerAsManipulated(this, self)
 	this:SetRunSpeed(math.Clamp(speed, 1, 10000))
 end
 
@@ -209,18 +216,7 @@ e2function void entity:plyResetSettings()
 	if not ValidPly(this) then return self:throw("Invalid player", nil) end
 	if not hasAccess(self.player, this, "resetsettings") then self:throw("You do not have access", nil) end
 
-	-- Only adjust HP and armor down, otherwise leave as is to prevent abuse
-	if this:Health() > 100 then
-		this:SetHealth(100)
-	end
-	if this:Armor() > 100 then
-		this:SetArmor(100)
-	end
-	this:SetJumpPower(200)
-	this:SetGravity(1)
-	this:SetWalkSpeed(200)
-	this:SetRunSpeed(400)
-	this:Freeze(false)
+	resetPlayerToDefaults(this)
 end
 
 --- Returns the walk speed of the player.
@@ -231,11 +227,36 @@ e2function number entity:plyGetSpeed()
 	return this:GetWalkSpeed()
 end
 
--- Freeze functionality
+-- Generic manipulation tracking and cleanup
+local function markPlayerAsManipulated(ply, e2_chip)
+	if not ply.plycore_manipulatedby then
+		ply.plycore_manipulatedby = {}
+	end
+	ply.plycore_manipulatedby[e2_chip] = true
+end
+
+local function resetPlayerToDefaults(ply)
+	-- Only adjust HP and armor down, otherwise leave as is to prevent abuse
+	if ply:Health() > 100 then
+		ply:SetHealth(100)
+	end
+	if ply:Armor() > 100 then
+		ply:SetArmor(100)
+	end
+	ply:SetJumpPower(200)
+	ply:SetGravity(1)
+	ply:SetWalkSpeed(200)
+	ply:SetRunSpeed(400)
+	ply:Freeze(false)
+end
+
 registerCallback("destruct",function(self)
 	for _, ply in pairs(player.GetAll()) do
-		if ply.plycore_freezeby == self then
-			ply:Freeze(false)
+		if ply.plycore_manipulatedby and ply.plycore_manipulatedby[self] then
+			resetPlayerToDefaults(ply)
+			
+			-- Clean up the tracking
+			ply.plycore_manipulatedby[self] = nil
 		end
 	end
 end)
@@ -245,7 +266,7 @@ e2function void entity:plyFreeze(number freeze)
 	if not ValidPly(this) then return self:throw("Invalid player", nil) end
 	if not hasAccess(self.player, this, "freeze") then self:throw("You do not have access", nil) end
 
-	this.plycore_freezeby = self
+	markPlayerAsManipulated(this, self)
 	this:Freeze(freeze == 1)
 end
 
