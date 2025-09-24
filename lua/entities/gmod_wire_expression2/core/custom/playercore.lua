@@ -4,7 +4,6 @@ local function ValidPly(ply)
 	if not IsValid(ply) or not ply:IsPlayer() then
 		return false
 	end
-
 	return true
 end
 
@@ -27,6 +26,10 @@ local function isPositionInBounds(pos)
 	       pos.z >= minBounds.z and pos.z <= maxBounds.z
 end
 
+local function inAdminMode(ply)
+	return ply.GetAdminmode and ply:GetAdminmode()
+end
+
 local function hasAccess(ply, target, command)
 	local valid = hook.Call("PlyCoreCommand", GAMEMODE, ply, target, command)
 
@@ -40,10 +43,16 @@ local function hasAccess(ply, target, command)
 		if ply:GetUserGroup() == "Event Team" and ply:GetEventMode() then
 			-- If we're on the MBRP exhib map, restrict e2 commands to only be useable within the boundary box
 			if isOnMBRPExhibMap() then
-				if IsValid(target) then
+				if ValidPly(target) then
 					-- Add exception for resetting player settings in case they leave the event area
-					if command == "resetsettings" then
+					-- and for convenience functions to prevent crashing chip
+					if command == "resetsettings" or command == "inbounds" or command == "isadminmode" then
 						return true
+					end
+
+					-- Prevent commands from running on admins
+					if inAdminMode(target) then
+						return false
 					end
 
 					local targetPos = target:GetPos()
@@ -246,4 +255,24 @@ e2function number entity:plyIsFrozen()
 	if not hasAccess(self.player, this, "isfrozen") then self:throw("You do not have access", nil) end
 
 	return this:IsFlagSet(FL_FROZEN) and 1 or 0
+end
+
+-- When combined with plyIsAdminMode, we can avoid crashing the chip if something happens outside the owner's control
+e2function number entity:plyInBounds()
+	if not ValidPly(this) then return self:throw("Invalid player", nil) end
+	if not hasAccess(self.player, this, "inbounds") then self:throw("You do not have access", nil) end
+
+	-- Always in bounds on other maps
+	if isOnMBRPExhibMap() then
+		return isPositionInBounds(this:GetPos()) and 1 or 0
+	else
+		return 1
+	end
+end
+
+e2function number entity:plyIsAdminMode()
+	if not ValidPly(this) then return self:throw("Invalid player", nil) end
+	if not hasAccess(self.player, this, "isadminmode") then self:throw("You do not have access", nil) end
+
+	return this:GetAdminmode() and 1 or 0
 end
