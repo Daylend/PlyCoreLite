@@ -30,6 +30,29 @@ local function inAdminMode(ply)
 	return ply.GetAdminmode and ply:GetAdminmode()
 end
 
+-- Generic manipulation tracking and cleanup functions
+local function markPlayerAsManipulated(ply, e2_chip)
+	if not ply.plycore_manipulatedby then
+		ply.plycore_manipulatedby = {}
+	end
+	ply.plycore_manipulatedby[e2_chip] = true
+end
+
+local function resetPlayerToDefaults(ply)
+	-- Only adjust HP and armor down, otherwise leave as is to prevent abuse
+	if ply:Health() > 100 then
+		ply:SetHealth(100)
+	end
+	if ply:Armor() > 100 then
+		ply:SetArmor(100)
+	end
+	ply:SetJumpPower(200)
+	ply:SetGravity(1)
+	ply:SetWalkSpeed(200)
+	ply:SetRunSpeed(400)
+	ply:Freeze(false)
+end
+
 local function hasAccess(ply, target, command)
 	local valid = hook.Call("PlyCoreCommand", GAMEMODE, ply, target, command)
 
@@ -225,29 +248,6 @@ e2function number entity:plyGetSpeed()
 	if not hasAccess(self.player, this, "getspeed") then self:throw("You do not have access", nil) end
 
 	return this:GetWalkSpeed()
-end
-
--- Generic manipulation tracking and cleanup
-local function markPlayerAsManipulated(ply, e2_chip)
-	if not ply.plycore_manipulatedby then
-		ply.plycore_manipulatedby = {}
-	end
-	ply.plycore_manipulatedby[e2_chip] = true
-end
-
-local function resetPlayerToDefaults(ply)
-	-- Only adjust HP and armor down, otherwise leave as is to prevent abuse
-	if ply:Health() > 100 then
-		ply:SetHealth(100)
-	end
-	if ply:Armor() > 100 then
-		ply:SetArmor(100)
-	end
-	ply:SetJumpPower(200)
-	ply:SetGravity(1)
-	ply:SetWalkSpeed(200)
-	ply:SetRunSpeed(400)
-	ply:Freeze(false)
 end
 
 registerCallback("destruct",function(self)
