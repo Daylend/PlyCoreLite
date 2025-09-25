@@ -1,5 +1,20 @@
 E2Lib.RegisterExtension("playercorelite", true)
 
+-- Cache for players currently in the event
+local playersInEvent = {}
+
+-- Commands that don't require boundary checks
+local alwaysAllowedCommands = {"resetsettings", "inbounds", "isadminmode", "getplayersinevent"}
+
+local function inEventMode(ply)
+	-- Check if player is in the Event Team whitelist and has event mode enabled
+	local steamID64 = ply:SteamID64()
+	local isEventTeam = Exhibition.EventMode.Config.Whitelist[steamID64]
+	local hasEventMode = ply:GetNWBool("eventmode", false)
+	
+	return isEventTeam and hasEventMode
+end
+
 local function ValidPly(ply)
 	if not IsValid(ply) or not ply:IsPlayer() then
 		return false
@@ -60,16 +75,15 @@ local function hasAccess(ply, target, command)
 		return valid
 	end
 
-	-- SITUATION 1: Server has event mode and user group, MBRP specific
-	if ply.GetEventMode and ply.GetUserGroup then
+	-- SITUATION 1: is Exhib MBRP server
+	if Exhibition then
 		-- Event Team members in event mode have access
-		if ply:GetUserGroup() == "Event Team" and ply:GetEventMode() then
+		if inEventMode(ply) then
 			-- If we're on the MBRP exhib map, restrict e2 commands to only be useable within the boundary box
 			if isOnMBRPExhibMap() then
 				if ValidPly(target) then
-					-- Add exception for resetting player settings in case they leave the event area
-					-- and for convenience functions to prevent crashing chip
-					if command == "resetsettings" or command == "inbounds" or command == "isadminmode" then
+					-- Add exceptions for harmless commands
+					if table.HasValue(alwaysAllowedCommands, command) then
 						return true
 					end
 
@@ -88,11 +102,11 @@ local function hasAccess(ply, target, command)
 			return true -- Event team in event mode (MBRP server but unsupported map)
 		end
 		
-		-- Fallback: Allow admins to use commands even if they're not event team/event mode
-		return ply:IsAdmin()
+		-- Fallback: Allow superadmins to use commands even if they're not event team/event mode
+		return ply:IsSuperAdmin()
 	else
-		-- SITUATION 2: Not an MBRP server, allow admins to use commands
-		return ply:IsAdmin()
+		-- SITUATION 2: Not an MBRP server, allow superadmins to use commands
+		return ply:IsSuperAdmin()
 	end
 end
 
@@ -250,17 +264,6 @@ e2function number entity:plyGetSpeed()
 	return this:GetWalkSpeed()
 end
 
-registerCallback("destruct",function(self)
-	for _, ply in pairs(player.GetAll()) do
-		if ply.plycore_manipulatedby and ply.plycore_manipulatedby[self] then
-			resetPlayerToDefaults(ply)
-			
-			-- Clean up the tracking
-			ply.plycore_manipulatedby[self] = nil
-		end
-	end
-end)
-
 --- Freezes the player.
 e2function void entity:plyFreeze(number freeze)
 	if not ValidPly(this) then return self:throw("Invalid player", nil) end
@@ -297,3 +300,55 @@ e2function number entity:plyIsAdminMode()
 
 	return this:GetAdminmode() and 1 or 0
 end
+
+-- Use cached players for cheap calls
+e2function array getPlayersInEvent()
+	if not hasAccess(self.player, self.player, "getplayersinevent") then self:throw("You do not have access", nil) end
+	
+	return playersInEvent
+end
+
+registerCallback("destruct", function(self)
+	for _, ply in pairs(player.GetAll()) do
+		if ply.plycore_manipulatedby and ply.plycore_manipulatedby[self] then
+			resetPlayerToDefaults(ply)
+			
+			-- Clean up the tracking
+			ply.plycore_manipulatedby[self] = nil
+		end
+	end
+end)
+
+-- Initialize the cache on server start/addon reload
+registerCallback("preexecute", function()
+	playersInEvent = {}
+	-- Populate with any players already in an event
+	for _, ply in pairs(player.GetAll()) do
+		if ply.exhib_event then
+			table.insert(playersInEvent, ply)
+		end
+	end
+end)
+
+-- Hook to update the players in event cache when someone joins
+registerCallback("OnPlayerJoinEvent", function(ply)
+	if not table.HasValue(playersInEvent, ply) then
+		table.insert(playersInEvent, ply)
+	end
+end)
+
+-- Hook to update the players in event cache when someone leaves
+registerCallback("OnPlayerLeaveEvent", function(ply)
+	for i, eventPly in ipairs(playersInEvent) do
+		if eventPly == ply then
+			table.remove(playersInEvent, i)
+			break
+		end
+	end
+	
+	-- Also reset any manipulated settings when they leave the event
+	if ply.plycore_manipulatedby then
+		resetPlayerToDefaults(ply)
+		ply.plycore_manipulatedby[self] = nil
+	end
+end)
