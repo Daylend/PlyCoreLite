@@ -297,16 +297,23 @@ end
 e2function number entity:plyIsAdminMode()
 	if not ValidPly(this) then return self:throw("Invalid player", nil) end
 	if not hasAccess(self.player, this, "isadminmode") then self:throw("You do not have access", nil) end
-
 	return this:GetAdminmode() and 1 or 0
 end
 
 -- Use cached players for cheap calls
 e2function array getPlayersInEvent()
 	if not hasAccess(self.player, self.player, "getplayersinevent") then self:throw("You do not have access", nil) end
-	
 	return playersInEvent
 end
+
+E2Lib.registerEvent("playerJoinEvent", {
+	{ "Player", "e" }
+})
+
+E2Lib.registerEvent("playerLeaveEvent", {
+	{ "Player", "e" }
+})
+
 
 registerCallback("destruct", function(self)
 	for _, ply in pairs(player.GetAll()) do
@@ -335,6 +342,7 @@ registerCallback("OnPlayerJoinEvent", function(ply)
 	if not table.HasValue(playersInEvent, ply) then
 		table.insert(playersInEvent, ply)
 	end
+	E2Lib.triggerEvent("playerJoinEvent", { ply })
 end)
 
 -- Hook to update the players in event cache when someone leaves
@@ -351,4 +359,6 @@ registerCallback("OnPlayerLeaveEvent", function(ply)
 		resetPlayerToDefaults(ply)
 		ply.plycore_manipulatedby[self] = nil
 	end
+
+	E2Lib.triggerEvent("playerLeaveEvent", { ply })
 end)
