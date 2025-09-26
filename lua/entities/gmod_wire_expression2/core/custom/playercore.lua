@@ -371,7 +371,7 @@ registerCallback("preexecute", function()
 end)
 
 -- Hook to update the players in event cache when someone joins
-registerCallback("OnPlayerJoinEvent", function(ply)
+hook.Add("OnPlayerJoinEvent", "PlayerCore_PlayerJoinEvent",function(ply)
 	if not table.HasValue(playersInEvent, ply) then
 		table.insert(playersInEvent, ply)
 	end
@@ -395,8 +395,3 @@ registerCallback("OnPlayerLeaveEvent", function(ply)
 
 	E2Lib.triggerEvent("playerLeaveEvent", { ply })
 end)
-
--- Load testing module in development environments
-if game.SinglePlayer() or GetConVar("developer"):GetBool() then
-	include("test_playercore.lua")
-end
