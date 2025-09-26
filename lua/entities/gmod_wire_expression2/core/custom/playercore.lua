@@ -390,7 +390,7 @@ hook.Add("OnPlayerLeaveEvent", "PlayerCore_PlayerLeaveEvent", function(ply)
 	-- Also reset any manipulated settings when they leave the event
 	if ply.plycore_manipulatedby then
 		resetPlayerToDefaults(ply)
-		ply.plycore_manipulatedby[self] = nil
+		ply.plycore_manipulatedby = nil
 	end
 
 	E2Lib.triggerEvent("playerLeaveEvent", { ply })
