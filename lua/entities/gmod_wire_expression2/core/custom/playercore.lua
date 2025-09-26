@@ -117,8 +117,8 @@ local function hasAccess(ply, target, command)
 						return true
 					end
 
-					-- Prevent commands from running on admins
-					if inAdminMode(target) then
+					-- Prevent commands from running on admins. Admins can run commands on themselves.
+					if ply ~= target and inAdminMode(target) then
 						return false
 					end
 
