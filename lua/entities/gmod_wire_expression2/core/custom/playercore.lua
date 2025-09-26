@@ -3,34 +3,29 @@ E2Lib.RegisterExtension("playercorelite", true)
 -- Cache for players currently in the event
 local playersInEvent = {}
 
+-- Expose to global scope for testing module
+_G.playersInEvent = playersInEvent
+
 -- Commands that don't require boundary checks
 local alwaysAllowedCommands = {"resetsettings", "inbounds", "isadminmode", "getplayersinevent"}
-
--- Mock Exhibition for testing
-local MockExhibitionEnabled = false  -- Controls whether mock is active
-local MockExhibition = {
-	EventMode = {
-		Config = {
-			Whitelist = {}
-		}
-	}
-}
 
 local function inEventMode(ply)
 	-- Check if player is in the Event Team whitelist and has event mode enabled
 	local steamID64 = ply:SteamID64()
-	local exhibitionSystem = Exhibition or (MockExhibitionEnabled and MockExhibition)
 	
 	-- If no exhibition system is available, return false
-	if not exhibitionSystem then
+	if not Exhibition then
 		return false
 	end
 	
-	local isEventTeam = exhibitionSystem.EventMode.Config.Whitelist[steamID64]
+	local isEventTeam = Exhibition.EventMode.Config.Whitelist[steamID64]
 	local hasEventMode = ply:GetNWBool("eventmode", false)
 	
 	return isEventTeam and hasEventMode
 end
+
+-- Expose to global scope for testing module
+_G.inEventMode = inEventMode
 
 local function ValidPly(ply)
 	if not IsValid(ply) or not ply:IsPlayer() then
@@ -56,6 +51,9 @@ local function getSupportedMapConfig()
 	return mapConfigs[mapName]
 end
 
+-- Expose to global scope for testing module
+_G.getSupportedMapConfig = getSupportedMapConfig
+
 local function isPositionInBounds(pos)
 	local mapConfig = getSupportedMapConfig()
 	if not mapConfig then
@@ -69,6 +67,9 @@ local function isPositionInBounds(pos)
 	       pos.y >= math.min(minBounds.y, maxBounds.y) and pos.y <= math.max(minBounds.y, maxBounds.y) and
 	       pos.z >= math.min(minBounds.z, maxBounds.z) and pos.z <= math.max(minBounds.z, maxBounds.z)
 end
+
+-- Expose to global scope for testing module
+_G.isPositionInBounds = isPositionInBounds
 
 local function inAdminMode(ply)
 	return ply.GetAdminmode and ply:GetAdminmode()
@@ -104,8 +105,8 @@ local function hasAccess(ply, target, command)
 		return valid
 	end
 
-	-- SITUATION 1: is Exhib MBRP server (or testing with mock)
-	if Exhibition or MockExhibitionEnabled then
+	-- SITUATION 1: is Exhib MBRP server
+	if Exhibition then
 		-- Event Team members in event mode have access
 		if inEventMode(ply) then
 			-- If we're on a supported map, restrict e2 commands to only be useable within the boundary box
@@ -138,6 +139,9 @@ local function hasAccess(ply, target, command)
 		return ply:IsSuperAdmin()
 	end
 end
+
+-- Expose to global scope for testing module
+_G.hasAccess = hasAccess
 
 local function check(v)
 	return	-math.huge < v[1] and v[1] < math.huge and
@@ -392,158 +396,7 @@ registerCallback("OnPlayerLeaveEvent", function(ply)
 	E2Lib.triggerEvent("playerLeaveEvent", { ply })
 end)
 
--- Testing helpers (remove in production)
+-- Load testing module in development environments
 if game.SinglePlayer() or GetConVar("developer"):GetBool() then
-	local function getTargetPlayer(ply, args)
-		local targetPly = ply
-		if args[1] then
-			local targetName = args[1]
-			for _, p in pairs(player.GetAll()) do
-				if string.find(string.lower(p:Nick()), string.lower(targetName)) then
-					targetPly = p
-					break
-				end
-			end
-		end
-		return targetPly
-	end
-	
-	-- Mock Exhibition server state
-	concommand.Add("playercore_mock_exhib_on", function(ply, cmd, args)
-		MockExhibitionEnabled = true
-		print("PlayerCore Test: Exhibition server mode ENABLED (mock)")
-	end)
-	
-	concommand.Add("playercore_mock_exhib_off", function(ply, cmd, args)
-		MockExhibitionEnabled = false
-		print("PlayerCore Test: Exhibition server mode DISABLED (regular server)")
-	end)
-	
-	-- Event Team membership controls
-	concommand.Add("playercore_mock_eventteam_add", function(ply, cmd, args)
-		local targetPly = getTargetPlayer(ply, args)
-		MockExhibition.EventMode.Config.Whitelist[targetPly:SteamID64()] = true
-		print("PlayerCore Test: " .. targetPly:Nick() .. " added to Event Team whitelist")
-	end)
-	
-	concommand.Add("playercore_mock_eventteam_remove", function(ply, cmd, args)
-		local targetPly = getTargetPlayer(ply, args)
-		MockExhibition.EventMode.Config.Whitelist[targetPly:SteamID64()] = nil
-		print("PlayerCore Test: " .. targetPly:Nick() .. " removed from Event Team whitelist")
-	end)
-	
-	-- Event mode controls
-	concommand.Add("playercore_mock_eventmode_on", function(ply, cmd, args)
-		local targetPly = getTargetPlayer(ply, args)
-		targetPly:SetNWBool("eventmode", true)
-		print("PlayerCore Test: " .. targetPly:Nick() .. " event mode ENABLED")
-	end)
-	
-	concommand.Add("playercore_mock_eventmode_off", function(ply, cmd, args)
-		local targetPly = getTargetPlayer(ply, args)
-		targetPly:SetNWBool("eventmode", false)
-		print("PlayerCore Test: " .. targetPly:Nick() .. " event mode DISABLED")
-	end)
-	
-	-- Scenario shortcuts
-	concommand.Add("playercore_scenario_regular", function(ply, cmd, args)
-		local targetPly = getTargetPlayer(ply, args)
-		MockExhibition.EventMode.Config.Whitelist[targetPly:SteamID64()] = nil
-		targetPly:SetNWBool("eventmode", false)
-		print("PlayerCore Test: " .. targetPly:Nick() .. " set to REGULAR USER (not event team, no event mode)")
-	end)
-	
-	concommand.Add("playercore_scenario_eventteam_inactive", function(ply, cmd, args)
-		local targetPly = getTargetPlayer(ply, args)
-		MockExhibition.EventMode.Config.Whitelist[targetPly:SteamID64()] = true
-		targetPly:SetNWBool("eventmode", false)
-		print("PlayerCore Test: " .. targetPly:Nick() .. " set to EVENT TEAM INACTIVE (in event team, event mode OFF)")
-	end)
-	
-	concommand.Add("playercore_scenario_eventteam_active", function(ply, cmd, args)
-		local targetPly = getTargetPlayer(ply, args)
-		MockExhibition.EventMode.Config.Whitelist[targetPly:SteamID64()] = true
-		targetPly:SetNWBool("eventmode", true)
-		print("PlayerCore Test: " .. targetPly:Nick() .. " set to EVENT TEAM ACTIVE (in event team, event mode ON)")
-	end)
-	
-	-- Pure join/leave events (no permission changes)
-	concommand.Add("playercore_test_join", function(ply, cmd, args)
-		local targetPly = getTargetPlayer(ply, args)
-		targetPly.exhib_event = true
-		
-		-- Trigger join event
-		hook.Call("OnPlayerJoinEvent", GAMEMODE, targetPly)
-		
-		print("PlayerCore Test: " .. targetPly:Nick() .. " joined event")
-		print("Players in event: " .. #playersInEvent)
-	end)
-	
-	concommand.Add("playercore_test_leave", function(ply, cmd, args)
-		local targetPly = getTargetPlayer(ply, args)
-		targetPly.exhib_event = nil
-		
-		-- Trigger leave event
-		hook.Call("OnPlayerLeaveEvent", GAMEMODE, targetPly)
-		
-		print("PlayerCore Test: " .. targetPly:Nick() .. " left event")
-		print("Players in event: " .. #playersInEvent)
-	end)
-	
-	concommand.Add("playercore_test_status", function(ply, cmd, args)
-		local targetPly = getTargetPlayer(ply, args)
-		
-		print("=== PlayerCore Test Status ===")
-		print("Current map: " .. game.GetMap())
-		print("Map config exists: " .. tostring(getSupportedMapConfig() ~= nil))
-		print("Exhibition server mode: " .. tostring(Exhibition ~= nil or MockExhibitionEnabled))
-		print("Players in event: " .. #playersInEvent)
-		for i, p in ipairs(playersInEvent) do
-			print("  " .. i .. ": " .. p:Nick())
-		end
-		print("")
-		print("Target player: " .. targetPly:Nick())
-		print("  SteamID64: " .. targetPly:SteamID64())
-		print("  In Event Team whitelist: " .. tostring(MockExhibition.EventMode.Config.Whitelist[targetPly:SteamID64()] == true))
-		print("  Event mode enabled: " .. tostring(targetPly:GetNWBool("eventmode", false)))
-		print("  Has full event access: " .. tostring(inEventMode(targetPly)))
-		print("  Position: " .. tostring(targetPly:GetPos()))
-		print("  Position in bounds: " .. tostring(isPositionInBounds(targetPly:GetPos())))
-		print("  Is superadmin: " .. tostring(targetPly:IsSuperAdmin()))
-		
-		-- Test access for a sample command
-		local hasAccess = hasAccess(targetPly, targetPly, "setpos")
-		print("  Would have access to setpos: " .. tostring(hasAccess))
-	end)
-	
-	-- Help command
-	concommand.Add("playercore_test_help", function(ply, cmd, args)
-		print("=== PlayerCore Test Commands ===")
-		print("Server State:")
-		print("  playercore_mock_exhib_on - Enable Exhibition server mode")
-		print("  playercore_mock_exhib_off - Disable Exhibition server mode (regular server)")
-		print("")
-		print("Event Team Management:")
-		print("  playercore_mock_eventteam_add [player] - Add to Event Team whitelist")
-		print("  playercore_mock_eventteam_remove [player] - Remove from Event Team whitelist")
-		print("")
-		print("Event Mode Control:")
-		print("  playercore_mock_eventmode_on [player] - Enable event mode")
-		print("  playercore_mock_eventmode_off [player] - Disable event mode")
-		print("")
-		print("Scenario Shortcuts:")
-		print("  playercore_scenario_regular [player] - Regular user (no event team, no event mode)")
-		print("  playercore_scenario_eventteam_inactive [player] - Event team but event mode OFF")
-		print("  playercore_scenario_eventteam_active [player] - Event team with event mode ON")
-		print("")
-		print("Event Testing:")
-		print("  playercore_test_join [player] - Simulate joining an event")
-		print("  playercore_test_leave [player] - Simulate leaving an event")
-		print("")
-		print("Status:")
-		print("  playercore_test_status [player] - Show current test status")
-		print("  playercore_test_help - Show this help")
-		print("")
-		print("Note: [player] is optional - if not specified, targets yourself")
-	end)
+	include("test_playercore.lua")
 end
