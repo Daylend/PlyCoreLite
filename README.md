@@ -41,8 +41,9 @@ Clone this repository into your `steamapps\common\GarrysMod\garrysmod\addons` fo
 ### Utility Functions
 | Function                          | Return | Description                                                                                    |
 |-----------------------------------|:------:|------------------------------------------------------------------------------------------------|
-| E:plyInBounds()                   | N      | Returns 1 if the player is within allowed boundaries, 0 otherwise. Always returns 1 on non-MBRP maps. |
-| E:plyIsAdminMode()                | N      | Returns 1 if the player is in admin mode, 0 otherwise.       
+| posInBounds(vector pos)           | N      | Returns 1 if the position is within allowed boundaries, 0 otherwise. Always returns 1 on unsupported maps. |
+| E:plyIsAdminMode()                | N      | Returns 1 if the player is in admin mode, 0 otherwise.                                        |
+| getPlayersInEvent()               | A      | Returns an array of players currently in an event.                                            |
 
 ### Access Control
 
@@ -54,19 +55,21 @@ The addon uses a tiered permission system that adapts to different server config
 
 **MBRP Servers (with Event Mode support):**
 - **Event Team Access**: Members with "Event Team" user group who are in event mode have full access
-- **Boundary Restrictions**: On `rp_exhib_border*` maps, most commands are restricted to a specific area:
-  - Allowed area: X: 6000 to -10000, Y: 6000 to -10000, Z: 3000 to 11000 (grass area)
-  - Commands outside boundaries are blocked to prevent disruption
+- **Multi-Map Support**: Boundary restrictions apply to supported maps:
+  - `rp_exhib_border_v3b`: X: 6000 to -10000, Y: 6000 to -10000, Z: 3000 to 11000 (grass area)
+  - `gm_construct`: X: -1080 to -3220, Y: -1080 to -1910, Z: -200 to 240 (mock testing)
 - **Protected Players**: Commands cannot target players in admin mode
-- **Special Exceptions**: Three commands work everywhere for safety and convenience:
-  - `plyResetSettings()` - Allows resetting players who leave the event area
-  - `plyInBounds()` - Prevents chip crashes from position checks
-  - `plyIsAdminMode()` - Prevents chip crashes from admin status checks
-- **Fallback Access**: Non-event team members must be server admins to use any functions
+- **Special Exceptions**: Commands work everywhere in event mode for safety and convenience:
+  - `plyResetSettings()`, `posInBounds()`, `plyIsAdminMode()`, `getPlayersInEvent()`
+- **Fallback Access**: Non-event team members must be superadmin in admin mode to use functions
 
 **Standard Servers:**
 - **Admin-Only Access**: All functions require admin privileges
 - **No Restrictions**: No boundary limitations or special maps handling
+
+#### Development & Testing
+
+Testing commands are available in development environments (singleplayer or `developer 1`). Use `playercore_test_help` for available commands.
 
 [PlayerCore Workshop Page]: <https://steamcommunity.com/sharedfiles/filedetails/?id=216044582>
 [Expression 2 Core Collection]: <https://steamcommunity.com/workshop/filedetails/?id=726399057>

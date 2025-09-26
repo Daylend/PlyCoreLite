@@ -379,7 +379,7 @@ hook.Add("OnPlayerJoinEvent", "PlayerCore_PlayerJoinEvent",function(ply)
 end)
 
 -- Hook to update the players in event cache when someone leaves
-registerCallback("OnPlayerLeaveEvent", function(ply)
+hook.Add("OnPlayerLeaveEvent", "PlayerCore_PlayerLeaveEvent", function(ply)
 	for i, eventPly in ipairs(playersInEvent) do
 		if eventPly == ply then
 			table.remove(playersInEvent, i)
