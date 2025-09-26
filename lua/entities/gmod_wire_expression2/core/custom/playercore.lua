@@ -151,6 +151,8 @@ end
 
 -------------------------------------------------------------------------------------------------------------------------------
 
+__e2setcost(1)
+
 --- Sets the velocity of the player.
 e2function void entity:plyApplyForce(vector force)
 	if not ValidPly(this) then return self:throw("Invalid player", nil) end
@@ -198,7 +200,14 @@ e2function void entity:plySetHealth(number health)
 	if not hasAccess(self.player, this, "sethealth") then self:throw("You do not have access", nil) end
 
 	markPlayerAsManipulated(this, self)
-	this:SetHealth(math.Clamp(health, 0, 2^32/2-1))
+	
+	if health <= 0 then
+		if this:Alive() then
+			this:Kill()
+		end
+	else
+		this:SetHealth(math.Clamp(health, 1, 2^32/2-1))
+	end
 end
 
 --- Sets the armor of the player.
