@@ -22,23 +22,35 @@ local function ValidPly(ply)
 	return true
 end
 
-local function isOnMBRPExhibMap()
+-- Map configuration with boundaries
+local mapConfigs = {
+	["rp_exhib_border_v3b"] = {
+		minBounds = Vector(6000, 6000, 3000),
+		maxBounds = Vector(-10000, -10000, 11000)
+	},
+	["gm_construct"] = {
+		minBounds = Vector(-1080, -1080, -80),
+		maxBounds = Vector(-3220, -1910, 240)
+	}
+}
+
+local function getSupportedMapConfig()
 	local mapName = MAP and MAP or game.GetMap()
-	return string.find(mapName, "^rp_exhib_border")
+	return mapConfigs[mapName]
 end
 
 local function isPositionInBounds(pos)
-	if not isOnMBRPExhibMap() then
-		return true -- No restrictions on other maps
+	local mapConfig = getSupportedMapConfig()
+	if not mapConfig then
+		return true -- No restrictions on unsupported maps
 	end
 	
-	-- Grass area only
-	local minBounds = Vector(6000, 6000, 3000)
-	local maxBounds = Vector(-10000, -10000, 11000)
+	local minBounds = mapConfig.minBounds
+	local maxBounds = mapConfig.maxBounds
 	
-	return pos.x >= minBounds.x and pos.x <= maxBounds.x and
-	       pos.y >= minBounds.y and pos.y <= maxBounds.y and
-	       pos.z >= minBounds.z and pos.z <= maxBounds.z
+	return pos.x >= math.min(minBounds.x, maxBounds.x) and pos.x <= math.max(minBounds.x, maxBounds.x) and
+	       pos.y >= math.min(minBounds.y, maxBounds.y) and pos.y <= math.max(minBounds.y, maxBounds.y) and
+	       pos.z >= math.min(minBounds.z, maxBounds.z) and pos.z <= math.max(minBounds.z, maxBounds.z)
 end
 
 local function inAdminMode(ply)
@@ -79,8 +91,8 @@ local function hasAccess(ply, target, command)
 	if Exhibition then
 		-- Event Team members in event mode have access
 		if inEventMode(ply) then
-			-- If we're on the MBRP exhib map, restrict e2 commands to only be useable within the boundary box
-			if isOnMBRPExhibMap() then
+			-- If we're on a supported map, restrict e2 commands to only be useable within the boundary box
+			if getSupportedMapConfig() then
 				if ValidPly(target) then
 					-- Add exceptions for harmless commands
 					if table.HasValue(alwaysAllowedCommands, command) then
@@ -286,8 +298,8 @@ e2function number entity:plyInBounds()
 	if not ValidPly(this) then return self:throw("Invalid player", nil) end
 	if not hasAccess(self.player, this, "inbounds") then self:throw("You do not have access", nil) end
 
-	-- Always in bounds on other maps
-	if isOnMBRPExhibMap() then
+	-- Always in bounds on unsupported maps
+	if getSupportedMapConfig() then
 		return isPositionInBounds(this:GetPos()) and 1 or 0
 	else
 		return 1
