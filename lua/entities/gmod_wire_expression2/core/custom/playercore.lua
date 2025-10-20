@@ -40,6 +40,10 @@ local mapConfigs = {
 		minBounds = Vector(6000, 6000, 3000),
 		maxBounds = Vector(-10000, -10000, 11000)
 	},
+	["rp_mbrp_exhib_v21h"] = {
+		minBounds = Vector(-2000, -4500, 3000),
+		maxBounds = Vector(15000, 13000, 11000)
+	}
 	["gm_construct"] = {
 		minBounds = Vector(-1080, -1080, -200),
 		maxBounds = Vector(-3220, -1910, 240)
